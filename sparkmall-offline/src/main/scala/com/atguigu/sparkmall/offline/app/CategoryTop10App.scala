@@ -65,6 +65,7 @@ object CategoryTop10App {
     //    转换数据结构,并插入数据
     val top10Array =  top10.map(info => Array(info.taskId,info.categoryId,info.clickCount,info.orderCount,info.payCount))
     JDBCUtil.executeBatchUpdate("insert into category_top10 values(?,?,?,?,?)",top10Array)
+    top10
   }
 
 }
