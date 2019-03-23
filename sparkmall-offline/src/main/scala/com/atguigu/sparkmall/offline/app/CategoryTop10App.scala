@@ -2,6 +2,7 @@ package com.atguigu.sparkmall.offline.app
 
 
 import com.atguigu.sparkmall.common.bean.UserVisitAction
+import com.atguigu.sparkmall.common.util.JDBCUtil
 import com.atguigu.sparkmall.offline.acc.MapAccumulator
 import com.atguigu.sparkmall.offline.bean.CategoryCountInfo
 import org.apache.spark.rdd.RDD
@@ -10,7 +11,8 @@ import org.apache.spark.sql.SparkSession
 import scala.collection.mutable
 
 object CategoryTop10App {
-  def statCategoryTop10(spark: SparkSession, userVisitActionRDD: RDD[UserVisitAction]) = {
+
+  def statCategoryTop10(spark: SparkSession,userVisitActionRDD: RDD[UserVisitAction],taskId:String) = {
     // 1. 注册累加器
     val acc = new MapAccumulator
     spark.sparkContext.register(acc, "MapAccumulator")
@@ -54,7 +56,15 @@ object CategoryTop10App {
       (info.clickCount, info.orderCount, info.payCount))(Ordering.Tuple3(Ordering.Long.reverse, Ordering.Long.reverse, Ordering.Long.reverse)).take(10)
     top10.foreach(println)
 
-    // 6. 写到mysql
+    // 6. 写到mysql,使用批处理
+    //   先清空表中的数据
+    JDBCUtil.executeUpdate("use sparkmall",null)
+    JDBCUtil.executeUpdate("truncate table category_top10",null)
+
+    //   真正的插入数据
+    //    转换数据结构,并插入数据
+    val top10Array =  top10.map(info => Array(info.taskId,info.categoryId,info.clickCount,info.orderCount,info.payCount))
+    JDBCUtil.executeBatchUpdate("insert into category_top10 values(?,?,?,?,?)",top10Array)
   }
 
 }
